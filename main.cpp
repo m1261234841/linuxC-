@@ -11,16 +11,16 @@
 int main()
 {
 
-    //-------------------------------------------------------------------------
+    //---------------------------------------------------------------------------------------------------
     // 网络字节序转换  htonl()  ntohl()
 
     /*char* buf = "192.168.1.1";
     int num = *(int*)buf;
     int turned_num = htonl(num);
     buf = (char*)&turned_num;*/
-    //-------------------------------------------------------------------------
+    //---------------------------------------------------------------------------------------------------
 
-    //------------------------------------------------------------------------
+    //---------------------------------------------------------------------------------------------------
     // ip转换 int inet_pton(AF_INET, char* src, char* dst);
     //        int inet_ntop(AF_INET, CHAR* src, char* dst, socklen_t size);
 
@@ -31,18 +31,18 @@ int main()
     unsigned char* p = (unsigned char*)&num_ip;
     printf("%d %d %d %d", *p, *(p + 1), *(p + 2), *(p + 3));
     char p_ip[16]= "";*/
-    //-------------------------------------------------------------------------
+    //---------------------------------------------------------------------------------------------------
 
-    //-------------------------------------------------------------------------
+    //---------------------------------------------------------------------------------------------------
     /*
     * ipv4套接字结构体。 struct sockaddr_in sock_add;
     * 通用套接字结构体。   struct sockaddr add;
     * int send(char* buf, struct sockaddr*)
     */
-    //-------------------------------------------------------------------------
+    //---------------------------------------------------------------------------------------------------
     // 
     // 
-    //-------------------------------------------------------------------------
+    //---------------------------------------------------------------------------------------------------
     /*
     * tcp: 超时重传， 每次收到数据发ACK
     * #include <sys/socket.h>
@@ -68,9 +68,9 @@ int main()
     //    write(STDOUT_FILENO, buf, n);
     //}
     //close(sockfd);
-    //--------------------------------------------------------------------
+    //---------------------------------------------------------------------------------------------------
 
-    //--------------------------------------------------------------------
+    //---------------------------------------------------------------------------------------------------
     // 服务器代码
     /*
     * 1. socket(); 
@@ -79,47 +79,53 @@ int main()
     * 4. int acceptfd = accept(sockfd, struct sockaddr*, socklen_t* size);---> accept_socket
     *    如果连接队列没有新连接会阻塞。
     */
-    int sockfd = socket(AF_INET, SOCK_STREAM, 0);
-    struct sockaddr_in addr;
-    addr.sin_family = AF_INET;
-    addr.sin_port = htons(7111);
-    inet_pton(AF_INET, "192.168.75.159", &addr.sin_addr.s_addr);
+    //int sockfd = socket(AF_INET, SOCK_STREAM, 0);
+    //struct sockaddr_in addr;
+    //addr.sin_family = AF_INET;
+    //addr.sin_port = htons(7111);
+    //inet_pton(AF_INET, "192.168.75.159", &addr.sin_addr.s_addr);
 
-    int bind_ret = bind(sockfd, (struct sockaddr*)&addr, sizeof(addr));
-    assert(bind_ret >= 0);
-    int lret = listen(sockfd, 128); // 这个位置直接将sockfd--->listenfd。
-    assert(lret >= 0);
-    struct sockaddr_in client_addr;
-    bzero(&client_addr, sizeof(client_addr));
-    socklen_t size = sizeof(struct sockaddr_in);
+    //int bind_ret = bind(sockfd, (struct sockaddr*)&addr, sizeof(addr));
+    //assert(bind_ret >= 0);
+    //int lret = listen(sockfd, 128); // 这个位置直接将sockfd--->listenfd。
+    //assert(lret >= 0);
+    //struct sockaddr_in client_addr;
+    //bzero(&client_addr, sizeof(client_addr));
+    //socklen_t size = sizeof(struct sockaddr_in);
 
-    int acceptfd = accept(sockfd, (struct sockaddr*)&client_addr, &size);
-    assert(acceptfd >= 0);
-    //std::cout << acceptfd << std::endl;
-    char buf[1024];
-    while (1)
-    {
-        int m = write(acceptfd, "hello", 5);
-        // write(acceptfd, "hello", 5);
-        int n = read(acceptfd, buf, sizeof(buf));
-        // std::cout << buf << std::endl;
-        write(STDOUT_FILENO, buf, n);
-    }
-    //--------------------------------------------------------------------
+    //int acceptfd = accept(sockfd, (struct sockaddr*)&client_addr, &size);
+    //assert(acceptfd >= 0);
+    ////std::cout << acceptfd << std::endl;
+    //char buf[1024];
+    //while (1)
+    //{
+    //    int m = write(acceptfd, "hello", 5);
+    //    // write(acceptfd, "hello", 5);
+    //    int n = read(acceptfd, buf, sizeof(buf));
+    //    // std::cout << buf << std::endl;
+    //    write(STDOUT_FILENO, buf, n);
+    //}
+    //---------------------------------------------------------------------------------------------------
 
-    //--------------------------------------------------------------------
+    //---------------------------------------------------------------------------------------------------
     /*
     * 粘包：服务器发送过快，前面发送的在缓冲区的数据没来的急读， 后面的数据就来了， 没法确定读取地顺序
     *   解决方法：1. 约定好， 一次发送固定字节数目。
     *            2. 数据结尾加个'\n'
     *            3. 头部加上数据大小。
     */
-    //--------------------------------------------------------------------
+    //---------------------------------------------------------------------------------------------------
 
-    //--------------------------------------------------------------------
+
+    //---------------------------------------------------------------------------------------------------
     /*
-    * TCP:三次握手过程SYN---->SYN+ACK------>ACK
-    * TCP:四次挥手过程FIN---->ACK  
+    * TCP: 三次握手过程SYN---->SYN+ACK------>ACK
+    * TCP: 报文格式：源端口， 目的端口， 序号， 确认号（序号+标志位+数据字段长度）， 
+    *      控制位（ACK, SYN, FIN, URG), 偏移量， 校验和, 窗口尺寸。
+    * TCP：四次挥手client：FIN---->ACK 客户端处于半关闭状态，只关闭了应用层（只能收不能发
+    *             server：FIN----->ACK 客户端等待2MSL（最大报文生存时间，2-3min） 
+    *      为什么要等待2MSL： 第四次ACK可能丢失，若丢失，服务器会重发FIN。 主动关闭连接的会等待2MSL。
+    * TCP：滑动窗口: ？？？？？
     */
 
 
