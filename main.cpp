@@ -13,6 +13,9 @@
 #include <sys/time.h>
 #include <pthread.h>
 
+void* tfunc(void* arg) {
+	std::cout << "create a thread" << std::endl;
+}
 int Bind(int port, const char* IP)
 {
     struct sockaddr_in addr;
@@ -378,6 +381,60 @@ int main()
 	//		sigprocmask(SIG_UNBLOCK, &set, nullptr);
  //       }
  //   }
+//----------------------------------------------------------------------------------------------------------
+//? 多线程
+	//! 线程号获取code:
+	//-----------------------------------------
+	//pthread_t tid = 0;
+	//tid = pthread_self();
+	//std::cout << tid << std::endl;
+	//-----------------------------------------
+	//! 判断线程号code:
+	//-----------------------------------------
+	//pthread_t tid;
+	//tid = pthread_self();
+	//if (pthread_equal(tid, pthread_self())) {
+	//	std::cout << "two thread equals" << std::endl;
+	//}
+	//-----------------------------------------
+	//!线程创建
+	//? int pthread_creat(pthread_t* tid, const pthread_attr_t* attr, (void*)(*start_routine)(void*), void* arg);
+	//? int pthread_join(pthread_t tid, void**); 默认阻塞
+	//! code:
+	//auto cb = [](void* arg)->void* {
+	//	pthread_t* tid = new pthread_t();
+	//	int num = 50;
+	//	pthread_create(tid, nullptr, [](void* num)->void* {
+	//		int* inum = (int*)num;
+	//		while((*inum)--)
+	//			printf("int thread2 %d\n", *inum);
+	//		}, &num);
+	//	std::cout << "create thread" << std::endl;
+	//	int* a = (int*)arg;
+	//	for (int i = 0; i < *a; i++)
+	//	{
+	//		std::cout << "in child thread:" << i << std::endl;
+	//	}
+	//	pthread_join(*tid, nullptr);
+	//};
+	//pthread_t tid;
+	//int a = 20;
+	//int ret = pthread_create(&tid, nullptr, cb, &a);
+	//for (int i = 0; i < 20; i++)
+	//{
+	//	printf("int parent thread%d\n", i);
+	//}
+
+	//pthread_join(tid, nullptr);
+	//-----------------------------------------
+	//? int pthread_detach(pthread_t tid); 非阻塞, 进程退出，所有线程都结束。
+	//? detach状态的线程不能被join();
+	//-----------------------------------------
+	
 	
 
+//----------------------------------------------------------------------------------------------------------
+//? C++内存
+	// 堆， 栈， 全局数据区（BSS（未初始化），DATA（已初始化）， 常量区， 代码区（存放代码段））
+//----------------------------------------------------------------------------------------------------------
 }
