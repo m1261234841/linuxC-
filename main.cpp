@@ -13,8 +13,14 @@
 #include <sys/time.h>
 #include <pthread.h>
 
+static int num = 0;
 void* tfunc(void* arg) {
 	std::cout << "create a thread" << std::endl;
+	int* a = (int*)arg;
+	for (int i = 0; i < *a; i++)
+	{
+		std::cout << "in child thread:" << i << std::endl;
+	}
 }
 int Bind(int port, const char* IP)
 {
@@ -430,11 +436,77 @@ int main()
 	//? int pthread_detach(pthread_t tid); 非阻塞, 进程退出，所有线程都结束。
 	//? detach状态的线程不能被join();
 	//-----------------------------------------
-	
-	
 
+	//-----------------------------------------
+	//? 线程属性 struct pthread_attr_t; 
+	//? int pthread_attr_init(pthread_attr_t* attr);
+	//? int pthread_attr_destory(pthread_attr_t* attr);
+	//? 线程分离状态初始化： int pthread_attr_setdetachstate(pthread_attr_t* attr, int detachstate);
+	//? int pthread_attr_getdetachstate(pthread_attr_t* attr, int*detachstate);
+	//? 主要成员： 线程分离状态， 线程栈大小， 线程栈警戒缓冲区大小， 线程最低地址。
+	//! code
+	//pthread_attr_t attr;
+	//int retc = pthread_attr_init(&attr);
+	//pthread_attr_setdetachstate(&attr, PTHREAD_CREATE_JOINABLE);
+	//assert(retc == 0);
+	//// int retd = pthread_attr_destroy(&attr);
+	//// assert(retd == 0);
+
+	//pthread_t tid;
+	//int a = 20;
+	//pthread_create(&tid, &attr, tfunc, &a);
+	//int joinret = pthread_join(tid, nullptr);
+	//std::cout << "joinret = " << joinret << '\n';
+	
+	//-----------------------------------------
 //----------------------------------------------------------------------------------------------------------
 //? C++内存
 	// 堆， 栈， 全局数据区（BSS（未初始化），DATA（已初始化）， 常量区， 代码区（存放代码段））
 //----------------------------------------------------------------------------------------------------------
+
+//----------------------------------------------------------------------------------------------------------
+//? 死锁产生条件
+	// 资源互斥， 不可剥夺， 请求和保持， 循环等待
+//----------------------------------------------------------------------------------------------------------
+
+//----------------------------------------------------------------------------------------------------------
+//? 互斥锁 
+	//? int pthread_mutex_init(); int pthread_mutex_lock(); 
+	//? int pthread_mutex_unlock(); int pthread_mutex_trylock();
+	//----------------------------------------------------------
+	//! code
+	pthread_t tid1;
+	pthread_t tid2;
+	pthread_mutex_t mutex;
+	pthread_mutex_init(&mutex, nullptr);
+	auto fun1 = [](void* m)->void* {
+		std::cout << "create thread1\n";
+		while (num < 10000) {
+			pthread_mutex_lock((pthread_mutex_t*)m);
+			printf("in fun1 num = %d\n", num);
+			//sleep(1);
+			num++;
+			pthread_mutex_unlock((pthread_mutex_t*)m);
+
+		}
+	};
+	auto fun2 = [](void* m)->void* {
+		std::cout << "create thread2\n";
+		while (num < 10000)
+		{
+			pthread_mutex_lock((pthread_mutex_t*)m);
+			printf("in fun2 num = %d\n", num);
+			//sleep(1);
+			num++;
+			pthread_mutex_unlock((pthread_mutex_t*)m);
+		}
+	};
+	pthread_create(&tid1, nullptr, fun1, &mutex);
+	pthread_create(&tid2, nullptr, fun2, &mutex);
+	pthread_join(tid1, nullptr);
+	pthread_join(tid2, nullptr);
+	//----------------------------------------------------------
+
+//----------------------------------------------------------------------------------------------------------
+
 }
