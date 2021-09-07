@@ -14,6 +14,70 @@
 #include <pthread.h>
 
 static int num = 0;
+pthread_rwlock_t lock;
+pthread_mutex_t mutex;
+pthread_cond_t cond;
+int flag = 0;
+void* funcrd (void* arg) {
+	int idx = *(int*)arg;
+	while (1)
+	{
+		pthread_rwlock_rdlock(&lock);
+		printf("read thread%d  value:%d \n", idx, num);
+		pthread_rwlock_unlock(&lock);
+		sleep(random() % 3 + 1);
+
+	}
+};
+void* funcwr(void* arg){
+	int idx = *(int*)arg;
+	while (1)
+	{
+		// add wrlock
+		pthread_rwlock_wrlock(&lock);
+		num++;
+		printf("write thread%d change value:%d \n", idx, num);
+		pthread_rwlock_unlock(&lock);
+		sleep(random() % 3 + 1);
+
+	}
+}
+
+void* condfunc1(void* arg) {
+
+	while (1)
+	{
+		pthread_mutex_lock(&mutex);
+		flag = 1;
+		pthread_mutex_unlock(&mutex);
+
+		// 唤醒因为条件而阻塞的线程
+		pthread_cond_signal(&cond);
+
+		sleep(2);
+	}
+	return nullptr;
+}
+
+void* condfunc2(void* arg) {
+
+	while (1)
+	{
+		pthread_mutex_lock(&mutex);
+
+		if (flag == 0)
+		{
+			pthread_cond_wait(&cond, &mutex);
+		}
+		flag = 0;
+		std::cout << "线程2满足条件\n";
+		pthread_mutex_unlock(&mutex);
+
+	}
+
+	return nullptr;
+}
+
 void* tfunc(void* arg) {
 	std::cout << "create a thread" << std::endl;
 	int* a = (int*)arg;
@@ -475,38 +539,104 @@ int main()
 	//? int pthread_mutex_unlock(); int pthread_mutex_trylock();
 	//----------------------------------------------------------
 	//! code
-	pthread_t tid1;
-	pthread_t tid2;
-	pthread_mutex_t mutex;
-	pthread_mutex_init(&mutex, nullptr);
-	auto fun1 = [](void* m)->void* {
-		std::cout << "create thread1\n";
-		while (num < 10000) {
-			pthread_mutex_lock((pthread_mutex_t*)m);
-			printf("in fun1 num = %d\n", num);
-			//sleep(1);
-			num++;
-			pthread_mutex_unlock((pthread_mutex_t*)m);
+	//pthread_t tid1;
+	//pthread_t tid2;
+	//pthread_mutex_t mutex;
+	//pthread_mutex_init(&mutex, nullptr);
+	//auto fun1 = [](void* m)->void* {
+	//	std::cout << "create thread1\n";
+	//	while (num < 10000) {
+	//		pthread_mutex_lock((pthread_mutex_t*)m);
+	//		printf("in fun1 num = %d\n", num);
+	//		//sleep(1);
+	//		num++;
+	//		pthread_mutex_unlock((pthread_mutex_t*)m);
 
-		}
-	};
-	auto fun2 = [](void* m)->void* {
-		std::cout << "create thread2\n";
-		while (num < 10000)
-		{
-			pthread_mutex_lock((pthread_mutex_t*)m);
-			printf("in fun2 num = %d\n", num);
-			//sleep(1);
-			num++;
-			pthread_mutex_unlock((pthread_mutex_t*)m);
-		}
-	};
-	pthread_create(&tid1, nullptr, fun1, &mutex);
-	pthread_create(&tid2, nullptr, fun2, &mutex);
-	pthread_join(tid1, nullptr);
-	pthread_join(tid2, nullptr);
+	//	}
+	//};
+	//auto fun2 = [](void* m)->void* {
+	//	std::cout << "create thread2\n";
+	//	while (num < 10000)
+	//	{
+	//		pthread_mutex_lock((pthread_mutex_t*)m);
+	//		printf("in fun2 num = %d\n", num);
+	//		//sleep(1);
+	//		num++;
+	//		pthread_mutex_unlock((pthread_mutex_t*)m);
+	//	}
+	//};
+	//pthread_create(&tid1, nullptr, fun1, &mutex);
+	//pthread_create(&tid2, nullptr, fun2, &mutex);
+	//pthread_join(tid1, nullptr);
+	//pthread_join(tid2, nullptr);
 	//----------------------------------------------------------
 
 //----------------------------------------------------------------------------------------------------------
+//? 读写锁:读多写少
+	//----------------------------------------------------
+	// pthread_rwlock_t;
+	//? int pthread_rwlock_init(pthread_rwlock_t* lock, pthread_rwlockattr_t* attr);
+	//? int pthread_rwlock_destory(pthread_rwlock_t* lock);
+	//? int pthread_rwlock_rdlock(pthread_rwlock_t* lock); 读锁
+	//? int pthread_rwlock_tryrelock(pthread_rwlock_t* lock);尝试读锁， 非阻塞
+	//? int pthread_rwlock_wrlock(pthread_rwlock_t* lock); 写锁
+	//? int pthread_rwlock_trywrlock(pthread_rwlock* lock); 尝试写锁
+	//? int pthread_rwlock_unlock(pthread_rwlock_t* lock);
+	//! code
+	//pthread_rwlock_t lock;
+	//pthread_rwlock_init(&lock, nullptr);
+	//pthread_mutex_t mutex;
+	//pthread_t tid[8];
+	//
+	//for (int i = 0; i < 8; i++)
+	//{
+	//	if (i < 5)
+	//	{
+	//		// 创建读线程
+	//		pthread_create(&tid[i], nullptr, funcrd, (void*)&i);
+	//	}
+	//	else
+	//	{
+	//		// 创建写线程
+	//		pthread_create(&tid[i], nullptr, funcwr, (void*)&i);
+	//	}
+	//}
 
+	//// 回收资源
+	//for (int i = 0; i < 8; i++)
+	//{
+	//	pthread_join(tid[i], nullptr);
+	//}
+	//pthread_rwlock_destroy(&lock);
+	//----------------------------------------------------
+//----------------------------------------------------------------------------------------------------------
+// 
+//----------------------------------------------------------------------------------------------------------
+//? 条件变量： pthread_cond_t;
+	//-----------------------------------------------
+	//? pthread_cond_init();
+	//? pthread_cond_destory();
+	//? pthread_cond_wait(pthread_cond_t* cond, pthread_mutex_t* mutex); 等待cond条件满足， 并释放mutex
+	//? pthread_cond_signal(pthread_cond_t* cond); 唤醒至少一个阻塞在cond上的线程
+	//? pthread_cond_broadcast(pthread_cond_t* cond); 唤醒全部阻塞在条件变量上的线程
+	//-----------------------------------------------
+	//! code
+	pthread_t tid1;
+	pthread_t tid2;
+
+	pthread_cond_init(&cond, nullptr);
+	pthread_mutex_init(&mutex, nullptr);
+	pthread_create(&tid1, nullptr, condfunc1, nullptr);
+	pthread_create(&tid2, nullptr, condfunc2, nullptr);
+	pthread_join(tid1, nullptr);
+	pthread_join(tid2, nullptr);
+
+	pthread_cond_destroy(&cond);
+	pthread_mutex_destroy(&mutex);
+
+//----------------------------------------------------------------------------------------------------------
+
+
+
+	return 0;
 }
