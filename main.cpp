@@ -18,6 +18,49 @@ pthread_rwlock_t lock;
 pthread_mutex_t mutex;
 pthread_cond_t cond;
 int flag = 0;
+
+typedef struct ListNode_t {
+	int data;
+	struct ListNode_t* next;
+} ListNode;
+
+ListNode* head = nullptr;
+
+void* producer(void*) {
+	while (1) {
+		pthread_mutex_lock(&mutex);
+		ListNode* node = new ListNode();
+		assert(node);
+		node->data = random();
+		node->next = head;
+		head = node;
+		pthread_mutex_unlock(&mutex);
+		pthread_cond_signal(&cond);
+		sleep(random() % 3 + 1);
+	}
+	return nullptr;
+}
+
+void* consumer(void*) {
+	while (1) {
+		pthread_mutex_lock(&mutex);
+		if (head == nullptr)
+		{
+			pthread_cond_wait(&cond, &mutex);
+		}
+
+		ListNode* temp = nullptr;
+		temp = head;
+		head = head->next;
+		std::cout << "消费" << temp->data << std::endl;
+		delete temp;
+		pthread_mutex_unlock(&mutex);
+		sleep(random() % 3 + 1);
+	}
+
+	return nullptr;
+}
+
 void* funcrd (void* arg) {
 	int idx = *(int*)arg;
 	while (1)
@@ -122,17 +165,23 @@ void handler1(int sig)
 }
 int main()
 {
-    //---------------------------------------------------------------------------------------------------
+//---------------------------------------------------------------------------------------------------
     //? 网络字节序转换  htonl()  ntohl()
 
     /*char* buf = "192.168.1.1";
     int num = *(int*)buf;
     int turned_num = htonl(num);
     buf = (char*)&turned_num;*/
-    //---------------------------------------------------------------------------------------------------
+//---------------------------------------------------------------------------------------------------
 
+//---------------------------------------------------------------------------------------------------
+//? 文件描述符
+//? #define STDIN_FILENO 0 标准输入得文件描述符
+//? #define STDOUT_FILENO 1 标准输出得文件描述符
+//? #define STDERR_FILENO 2 标准错误输出文件描述符
+//---------------------------------------------------------------------------------------------------
 
-	//---------------------------------------------------------------------------------------------------
+//---------------------------------------------------------------------------------------------------
 	/**
 	* typedef void(*sighandler_t)(int)
 	* 信号函数signal(int sig, sighandler_t handler);
@@ -621,21 +670,52 @@ int main()
 	//? pthread_cond_broadcast(pthread_cond_t* cond); 唤醒全部阻塞在条件变量上的线程
 	//-----------------------------------------------
 	//! code
-	pthread_t tid1;
-	pthread_t tid2;
+	//pthread_t tid1;
+	//pthread_t tid2;
 
-	pthread_cond_init(&cond, nullptr);
-	pthread_mutex_init(&mutex, nullptr);
-	pthread_create(&tid1, nullptr, condfunc1, nullptr);
-	pthread_create(&tid2, nullptr, condfunc2, nullptr);
-	pthread_join(tid1, nullptr);
-	pthread_join(tid2, nullptr);
+	//pthread_cond_init(&cond, nullptr);
+	//pthread_mutex_init(&mutex, nullptr);
+	//pthread_create(&tid1, nullptr, condfunc1, nullptr);
+	//pthread_create(&tid2, nullptr, condfunc2, nullptr);
+	//pthread_join(tid1, nullptr);
+	//pthread_join(tid2, nullptr);
 
-	pthread_cond_destroy(&cond);
-	pthread_mutex_destroy(&mutex);
+	//pthread_cond_destroy(&cond);
+	//pthread_mutex_destroy(&mutex);
 
 //----------------------------------------------------------------------------------------------------------
+//? 生产者消费者模型
+	//! code
+	
+	//pthread_t tid1;
+	//pthread_t tid2;
 
+	//pthread_attr_t attr;
+	//pthread_attr_init(&attr);
+	//pthread_cond_init(&cond, nullptr);
+	//pthread_mutex_init(&mutex, nullptr);
+
+	//pthread_attr_setdetachstate(&attr, PTHREAD_CREATE_JOINABLE);
+	//pthread_create(&tid1, nullptr, producer, nullptr);
+	//pthread_create(&tid2, nullptr, consumer, nullptr);
+	//
+	//pthread_attr_destroy(&attr);
+	//pthread_cond_destroy(&cond);
+	//pthread_mutex_init(&mutex, nullptr);
+
+	//pthread_join(tid1, nullptr);
+	//pthread_join(tid2, nullptr);
+//----------------------------------------------------------------------------------------------------------
+//? 信号量
+	//---------------------------------------------------------
+	//? PV操作 sem_t sem;
+	//? 初始化信号量： int sem_init(sem_t* sem, int pshared, unsigned int value); pshared = 0：线程间共享， value 信号量初始值
+	//? P操作： int sem_wait(sem_t* sem); 先检查sem是否为0， 为0则阻塞；
+	//?        int sem_trywait(sem_t* sem); 非阻塞
+	//? V操作： int sem_post(sem_t* sem); 信号量+1并唤醒等待线程sem_wait();
+	//? 获取信号量的值： int sem_getvalue(sem_t* sem, int* value); 保存在value中；
+	//---------------------------------------------------------
+//----------------------------------------------------------------------------------------------------------
 
 
 	return 0;
