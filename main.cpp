@@ -12,6 +12,10 @@
 #include <sys/wait.h>
 #include <sys/time.h>
 #include <pthread.h>
+#include <stdio.h>
+#include <fcntl.h>
+#include <sys/types.h>
+#include <sys/stat.h>
 
 static int num = 0;
 pthread_rwlock_t lock;
@@ -716,7 +720,51 @@ int main()
 	//? 获取信号量的值： int sem_getvalue(sem_t* sem, int* value); 保存在value中；
 	//---------------------------------------------------------
 //----------------------------------------------------------------------------------------------------------
+//? 文件操作 lseek(int fd, off_t off_set, int whence)  whence: SEEK_SET 文件开头； SEEK_CUR 当前位置； SEEK_END 文件末尾；
+	//? write() 会自动在文件末尾写
+	//! code-------------------------------------------
+	//int fd = -1;
+	//int ret = -1;
 
+	//char* buf = new char[3];
+	//fd = open("txt", O_RDWR | O_CREAT, 0644);
+	//if (-1 == fd)
+	//{
+	//	perror("open failed ....\n");
+	//}
+	//printf("fd = %d\n", fd);
+	//write(fd, "ABDEFG", 7);
 
+	//ret = lseek(fd, 0, SEEK_SET);
+	//write(fd, "1234567890", 10);
+	//ret = lseek(fd, 0, SEEK_SET);
+	//write(fd, "1234567890", 10);
+
+	//// 读文件
+	//memset(buf, 0, 3);
+	//ret = lseek(fd, 0, SEEK_SET);
+	//read(fd, buf, 3);
+	//std::cout << buf << std::endl;
+	//read(fd, buf, 3);
+	//std::cout << buf << std::endl;
+	//read(fd, buf, 3);
+	//std::cout << buf << std::endl;
+	//close(fd);
+	//-------------------------------------------
+//----------------------------------------------------------------------------------------------------------
+//? stat与lstat: int stat(const char* path, struct stat* buf); int lstat(const char* pathname, struct stat* buf);
+	//! code
+	//int ret = -1;
+	//struct stat s;
+	//ret = stat("txt", &s);
+	//assert(ret != -1);
+	//std::cout << "st_dev = " << s.st_dev << std::endl;
+	//std::cout << "st_size = " << s.st_size << std::endl;
+	//std::cout << "st_nlink = " << s.st_nlink << std::endl;
+//----------------------------------------------------------------------------------------------------------
+
+//----------------------------------------------------------------------------------------------------------
+//? dup(), dup2();
+//----------------------------------------------------------------------------------------------------------
 	return 0;
 }
