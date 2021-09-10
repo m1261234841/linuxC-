@@ -789,6 +789,74 @@ int main()
 //----------------------------------------------------------------------------------------------------------
 //? 父子进程： 对于数据段，写式拷贝， 读时共享
 //? 判断内存泄漏： val+tab valgrind
+//? 退出进程：exit(int status); 
+//? 等待子进程退出： int wait(int status);等待任意子进程结束， status进程退出状态；  int waitpid(pid_t* pid, int* status, int option);
+	//! code
+	//pid_t pid;
+	//pid = fork();
+	//if (pid == 0)
+	//{
+	//	sleep(5);
+	//	exit(0);
+	//}
+	//int status;
+	//wait(&status);
+	//
+	//std::cout << status << std::endl;
+	//! code waitpid();
+	//pid_t pid;
+	//pid = fork();
+	//if (pid == 0)
+	//{
+	//	sleep(5);
+	//	exit(0);
+	//}
+	//int status;
+	////waitpid(-1, &status, 0);
+	//sleep(100);
+	//std::cout << status << std::endl;
+//----------------------------------------------------------------------------------------------------------
+
+//----------------------------------------------------------------------------------------------------------
+//? exec()函数族
+//? execlp(const char* file, ci=onst char* arg, ..../* char* */); 替换当前进程镜像
+	//! code
+	//std::cout << "hello main" << std::endl;
+	//execlp("ps", "ps", "-a", "/home", "NULL");
+//----------------------------------------------------------------------------------------------------------
+
+//----------------------------------------------------------------------------------------------------------
+//? 进程间通信
+	//? 无名管道：半双工 pipe(int pipefd[2]);
+
+	int pipefd[2];
+	pipe(pipefd);
+
+	pid_t pid;
+	pid = fork();
+	char wrbuf[1024];
+	char rdbuf[1024];
+	std::string str("1239712904812");
+	memset(wrbuf, 0, sizeof(wrbuf));
+	memset(rdbuf, 0, sizeof(rdbuf));
+	if (pid == 0)
+	{
+		// 子进程
+		for (int i = 0; i < 100; i++) {
+			sprintf(wrbuf+7, "buf+%d", i);
+			write(pipefd[1], wrbuf, 7);
+			sleep(1);
+		}
+	}
+	else
+	{
+		while (1)
+		{
+			read(pipefd[0], rdbuf, sizeof(rdbuf));
+			printf("read in fd[0] = %s\n", rdbuf);
+		}
+	}
+	
 //----------------------------------------------------------------------------------------------------------
 	return 0;
 }
