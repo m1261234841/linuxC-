@@ -17,6 +17,7 @@
 #include <sys/types.h>
 #include <sys/stat.h>
 
+
 static int num = 0;
 pthread_rwlock_t lock;
 pthread_mutex_t mutex;
@@ -828,35 +829,103 @@ int main()
 //----------------------------------------------------------------------------------------------------------
 //? 进程间通信
 	//? 无名管道：半双工 pipe(int pipefd[2]);
+	//int pipefd[2];
+	//pipe(pipefd);
+	//char wrbuf[1024];
+	//char rdbuf[1024];
+	////? 管道设置为非阻塞
+	//std::string str("1239712904812");
+	//memset(wrbuf, 0, sizeof(wrbuf));
+	//memset(rdbuf, 0, sizeof(rdbuf));
+	//pid_t pid;
+	//pid = fork();
+	//if (pid == 0)
+	//{ 
+	//	// 子进程
+	//	close(pipefd[0]);
+	//	for (int i = 0; i < 10000; i++) {
+	//		sprintf(wrbuf, "buf+%d", i);
+	//		write(pipefd[1], wrbuf, 7);
+	//		printf("write 7bit in pipefd[1], in num i = %d\n", i);
+	//		//sleep(1);
+	//	}
+	//	close(pipefd[1]);
+	//	exit(12);
+	//}
+	//
+	//close(pipefd[1]);
+	//while (1)
+	//{
+	//	int ret = fcntl(pipefd[0], F_GETFL);
+	//	ret |= O_NONBLOCK;
+	//	fcntl(pipefd[0], F_SETFL, ret);
+	//	read(pipefd[0], wrbuf, sizeof(wrbuf));
+	//	printf("read in fd[0] = %s\n", wrbuf);
+	//	
+	//}
+	//close(pipefd[0]);
+//-------------------------------------------------------------------------------------------------------
 
-	int pipefd[2];
-	pipe(pipefd);
 
+//--------------------------------------------------------------------------------------------------
+//? 有名管道 int mkfifo("fifo", 0644);
+	//! code
+	/*int ret = -1;
+	ret = mkfifo("fifo", 0644);
+	assert(ret != -1);*/
+//--------------------------------------------------------------------------------------------------
+
+//--------------------------------------------------------------------------------------------------
+//? raise(int sig); 自己给自己发信号
+//? abort（void）; 
+//? alarm(unsigned int seconds); 设置定时器 seconds秒后发出SIGTERM信号
+	//! code
+	//int i = 0;
+	//alarm(5);
+	//while (1)
+	//{
+	//	printf("int second: %d\n", i);
+	//	i++;
+	//	alarm(5);
+	//	if (i == 10)
+	//	{
+	//		abort();
+	//		// raise(SIGTERM); // 等价于kill(getpid(), SIGTERM);
+	//	}
+	//	sleep(1);
+
+	//}
+//--------------------------------------------------------------------------------------------------
+
+//--------------------------------------------------------------------------------------------------
+//? 守护进程代码
+	//! code
 	pid_t pid;
 	pid = fork();
-	char wrbuf[1024];
-	char rdbuf[1024];
-	std::string str("1239712904812");
-	memset(wrbuf, 0, sizeof(wrbuf));
-	memset(rdbuf, 0, sizeof(rdbuf));
-	if (pid == 0)
-	{
-		// 子进程
-		for (int i = 0; i < 100; i++) {
-			sprintf(wrbuf+7, "buf+%d", i);
-			write(pipefd[1], wrbuf, 7);
-			sleep(1);
-		}
-	}
-	else
-	{
-		while (1)
-		{
-			read(pipefd[0], rdbuf, sizeof(rdbuf));
-			printf("read in fd[0] = %s\n", rdbuf);
-		}
-	}
+	if(pid > 0)
+		exit(0);
+	// 创建新会话
+	pid = setsid();
+	assert(pid != -1);
+
+
+	// 改变当前工作目录
+	int ret = chdir("/");
 	
-//----------------------------------------------------------------------------------------------------------
+	// 设置权限掩码
+	umask(0);
+
+	// 关闭文件描述符
+	close(STDOUT_FILENO);
+	close(STDIN_FILENO);
+	close(STDERR_FILENO);
+
+	// 执行核心业务
+	while (1)
+	{
+		system("date >> /txt.log");
+		sleep(1);
+	}
+//--------------------------------------------------------------------------------------------------
 	return 0;
 }
