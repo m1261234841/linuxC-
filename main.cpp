@@ -18,6 +18,11 @@
 #include <sys/stat.h>
 
 
+typedef struct cli_info {
+	int accfd;
+	struct sockaddr_in cliaddr;
+} cli_info_t;
+
 static int num = 0;
 pthread_rwlock_t lock;
 pthread_mutex_t mutex;
@@ -30,6 +35,30 @@ typedef struct ListNode_t {
 } ListNode;
 
 ListNode* head = nullptr;
+
+void* func(void* arg) {
+	char buf[128];
+	memset(buf, 0, sizeof(buf));
+	cli_info_t thread_cli_info = *(cli_info_t*)arg;
+	
+
+	printf("port = %d", ntohs(thread_cli_info.cliaddr.sin_port));
+
+	printf("accfd = %d\n", thread_cli_info.accfd);
+	int sum_read = 0;
+	while (1) {
+		int read_ret = read(thread_cli_info.accfd, buf + sum_read, sizeof(buf));
+		sum_read += read_ret;
+		printf("read in client = %s", buf);
+		lseek(thread_cli_info.accfd, 0, SEEK_CUR);
+		if (strcmp(buf, "stop") == 0)
+			break;
+		int write_ret = write(thread_cli_info.accfd, buf, read_ret);
+	}
+	close(thread_cli_info.accfd);
+	exit(0);
+	// free(thread_cli_info);
+}
 
 void* producer(void*) {
 	while (1) {
@@ -900,32 +929,93 @@ int main()
 //--------------------------------------------------------------------------------------------------
 //? 守护进程代码
 	//! code
-	pid_t pid;
-	pid = fork();
-	if(pid > 0)
-		exit(0);
-	// 创建新会话
-	pid = setsid();
-	assert(pid != -1);
+	//pid_t pid;
+	//pid = fork();
+	//if(pid > 0)
+	//	exit(0);
+	//// 创建新会话
+	//pid = setsid();
+	//assert(pid != -1);
 
 
-	// 改变当前工作目录
-	int ret = chdir("/");
-	
-	// 设置权限掩码
-	umask(0);
+	//// 改变当前工作目录
+	//int ret = chdir("/");
+	//
+	//// 设置权限掩码
+	//umask(0);
 
-	// 关闭文件描述符
-	close(STDOUT_FILENO);
-	close(STDIN_FILENO);
-	close(STDERR_FILENO);
+	//// 关闭文件描述符
+	//close(STDOUT_FILENO);
+	//close(STDIN_FILENO);
+	//close(STDERR_FILENO);
 
-	// 执行核心业务
-	while (1)
-	{
-		system("date >> /txt.log");
-		sleep(1);
-	}
+	//// 执行核心业务
+	//while (1)
+	//{
+	//	system("date >> /txt.log");
+	//	sleep(1);
+	//}
+//--------------------------------------------------------------------------------------------------
+
+//--------------------------------------------------------------------------------------------------
+//? 线程版服务器
+	//! code
+
+	//char ip[16] = "192.168.148.159";
+	//const int port = 88888;
+	//struct sockaddr_in serveraddr;
+	//serveraddr.sin_family = AF_INET;
+	//serveraddr.sin_port = htons(port);
+	//inet_pton(AF_INET, ip, &serveraddr.sin_addr.s_addr);
+	//int listenfd = socket(AF_INET, SOCK_STREAM, 0);
+	//int bind_ret = bind(listenfd, (struct sockaddr*) & serveraddr, sizeof(serveraddr));
+	//assert(bind_ret != -1);
+	//int listen_ret = listen(listenfd, 20);
+	//assert(listen_ret != -1);
+	//struct sockaddr_in* cliaddr;
+	//socklen_t len = sizeof(cliaddr);
+
+	//while (1) {
+	//	cli_info_t acc_cli_info;
+	//	cliaddr = new sockaddr_in();
+	//	int accfd = accept(listenfd, (struct sockaddr*)cliaddr, &len);
+	//	acc_cli_info.accfd = accfd;
+	//	acc_cli_info.cliaddr = *cliaddr;
+
+	//	pthread_t pid;
+	//	pthread_create(&pid, nullptr, func, &acc_cli_info);
+	//}
+	 
+//--------------------------------------------------------------------------------------------------
+
+//--------------------------------------------------------------------------------------------------
+//? 心跳包： 作用： 如果对方异常断开， 本机检测不到， 一直等待， 浪费资源。
+//? 需要设置TCP的保持链接， 需要每隔一段时间发送探测分节， 如果连续多个探测分节对方未回复， 将连接断开。
+//? 心跳包要保证最小粒度。
+//? 乒乓包：携带比较多的数据的心跳包。
+//? code： keepAlive = 1; setsockopt(listenfd, SOL_SOCKET, SO_KEEPALIVE, (void*)&keepAlive, sizeof(keepAlive));
+//--------------------------------------------------------------------------------------------------
+
+//--------------------------------------------------------------------------------------------------
+//? 端口复用： 最后启用的端口可以用
+//? int opt = 1;
+//? setsockopt(listenfd, SOL_SOCKET, SO_REUSEADDR, &opt, sizeof(opt));
+//--------------------------------------------------------------------------------------------------
+
+
+//--------------------------------------------------------------------------------------------------
+//? 高并发服务器！
+	//? 阻塞等待： 消耗资源 （一个进程服务一个连接）
+	//? 非阻塞忙轮询： 消耗CPU（轮询所有连接， 有业务就处理）
+	//? IO复用： 内核监听多个文件描述符的读写缓冲区是否有变化， 有变化就把事件告知应用层。
+//? select(); 1. 跨平台  2. windows用的多。 3. 跨平台
+	//---------------------------------------------------------------------------
+	//? select: 
+	//? 1.文件表： 使用位图实现，共1024位。
+	//? 2.int select(int nfds, fd_set* readfds, fd_set* writefds, fd_set* exceptfds, struct timeval* timeout);
+	//? 3.nfds: 最大文件描述符+1；readfds 需要监听的文件描述符； writefds；
+	//---------------------------------------------------------------------------
+//? epoll(); 1. linux
 //--------------------------------------------------------------------------------------------------
 	return 0;
 }
