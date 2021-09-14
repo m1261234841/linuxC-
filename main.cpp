@@ -16,6 +16,7 @@
 #include <fcntl.h>
 #include <sys/types.h>
 #include <sys/stat.h>
+#include <sys/epoll.h>
 #include <poll.h>
 
 
@@ -1019,88 +1020,88 @@ int main()
 	//? 4.timeval{long tv_sec; long tv_usec;} 多长时间监听一次， 固定时间：限时等待； 永久监听： nullptr
 	//? 返回变化的文件描述符个数， 变化的存在于集合中， 未变化的会被删除。
 	//! select 代码
-	struct sockaddr_in addr;
-	const int port = 88881;
-	char ip[16] = "192.168.148.159";
-	addr.sin_family = AF_INET;
-	inet_pton(AF_INET, ip, &addr.sin_addr.s_addr);
-	addr.sin_port = htons(port);
-	int lfd = socket(AF_INET, SOCK_STREAM, 0);
-	
-	int ret = bind(lfd, (struct sockaddr*) & addr, sizeof(addr));
-	assert(ret != -1);
-	struct timeval time_val;
-	time_val.tv_sec = 1;
-	int l_ret = listen(lfd, 128);
-	fd_set old_set, r_set;
-	FD_ZERO(&old_set);
-	FD_ZERO(&r_set);
+	//struct sockaddr_in addr;
+	//const int port = 88881;
+	//char ip[16] = "192.168.148.159";
+	//addr.sin_family = AF_INET;
+	//inet_pton(AF_INET, ip, &addr.sin_addr.s_addr);
+	//addr.sin_port = htons(port);
+	//int lfd = socket(AF_INET, SOCK_STREAM, 0);
+	//
+	//int ret = bind(lfd, (struct sockaddr*) & addr, sizeof(addr));
+	//assert(ret != -1);
+	//struct timeval time_val;
+	//time_val.tv_sec = 1;
+	//int l_ret = listen(lfd, 128);
+	//fd_set old_set, r_set;
+	//FD_ZERO(&old_set);
+	//FD_ZERO(&r_set);
 
-	FD_SET(lfd, &old_set);
-	int max_fd = lfd + 1;
-	while (1)
-	{
-		r_set = old_set;
-		int n = select(max_fd, &r_set, nullptr, nullptr, &time_val);
-		assert(n != -1);
-		if (n == 0)
-			continue;
-		else
-		{
-			if (FD_ISSET(lfd, &r_set))
-			{
-				struct sockaddr_in cliaddr;
-				socklen_t len = sizeof(cliaddr);
+	//FD_SET(lfd, &old_set);
+	//int max_fd = lfd + 1;
+	//while (1)
+	//{
+	//	r_set = old_set;
+	//	int n = select(max_fd, &r_set, nullptr, nullptr, &time_val);
+	//	assert(n != -1);
+	//	if (n == 0)
+	//		continue;
+	//	else
+	//	{
+	//		if (FD_ISSET(lfd, &r_set))
+	//		{
+	//			struct sockaddr_in cliaddr;
+	//			socklen_t len = sizeof(cliaddr);
 
-				int afd = accept(lfd, (struct sockaddr*) & cliaddr, &len);
-				char ip[16];
-				int port;
-				std::cout << inet_ntop(AF_INET, &cliaddr.sin_addr.s_addr, ip, 16) << std::endl;
-				std::cout << ntohs(cliaddr.sin_port) << std::endl;
+	//			int afd = accept(lfd, (struct sockaddr*) & cliaddr, &len);
+	//			char ip[16];
+	//			int port;
+	//			std::cout << inet_ntop(AF_INET, &cliaddr.sin_addr.s_addr, ip, 16) << std::endl;
+	//			std::cout << ntohs(cliaddr.sin_port) << std::endl;
 
-				FD_SET(afd, &old_set);
-				if (afd > lfd)
-					max_fd = afd + 1;
-				if (--n == 0)
-					continue;
-			}
-			else
-			{
-				for (int i = lfd+1; i <= max_fd; i++)
-				{
-					if (FD_ISSET(i, &r_set))
-					{
-						char buf[1500];
-						memset(buf, 0, sizeof(buf));
-						int n = read(i, buf, sizeof(buf));
+	//			FD_SET(afd, &old_set);
+	//			if (afd > lfd)
+	//				max_fd = afd + 1;
+	//			if (--n == 0)
+	//				continue;
+	//		}
+	//		else
+	//		{
+	//			for (int i = lfd+1; i <= max_fd; i++)
+	//			{
+	//				if (FD_ISSET(i, &r_set))
+	//				{
+	//					char buf[1500];
+	//					memset(buf, 0, sizeof(buf));
+	//					int n = read(i, buf, sizeof(buf));
 
-						if (n < 0) {
-							close(i);
-							FD_CLR(i, &old_set);
-							continue;
-						}
-						else if (n == 0)
-						{
-							// 关闭连接
-							close(i);
-							FD_CLR(i, &old_set);
-						}
-						pthread_mutex_init(&mutex, nullptr);
-						pthread_mutex_lock(&mutex);
-						std::cout << buf << std::endl;
-						pthread_mutex_unlock(&mutex);
-						write(i, buf, n);
-					}
-					else
-					{
-						continue;
-					}
-				}
-			}
-			
-		}
+	//					if (n < 0) {
+	//						close(i);
+	//						FD_CLR(i, &old_set);
+	//						continue;
+	//					}
+	//					else if (n == 0)
+	//					{
+	//						// 关闭连接
+	//						close(i);
+	//						FD_CLR(i, &old_set);
+	//					}
+	//					pthread_mutex_init(&mutex, nullptr);
+	//					pthread_mutex_lock(&mutex);
+	//					std::cout << buf << std::endl;
+	//					pthread_mutex_unlock(&mutex);
+	//					write(i, buf, n);
+	//				}
+	//				else
+	//				{
+	//					continue;
+	//				}
+	//			}
+	//		}
+	//		
+	//	}
 
-	}
+	//}
 	//---------------------------------------------------------------------------
 //? poll(); 1. 没有最大文件描述符限制。 2. 请求描述符集和返回描述符集分离。
 //? 优点： 1. 没有文件描述符的限制 
@@ -1112,7 +1113,79 @@ int main()
 	//?        short events;//  POLLIN：读事件， POLLOUT：写事件； 
 	//?        short revents;//  返回监听到的事件}
 	//TODO : POLLCODE
-//? epoll:
+//? epoll: 1. 创建一颗红黑树
+// 	1、 int epfd = epoll_create(1); 创建epoll红黑树
+//? 2. 描述符上树
+//  2.	epoll_event ev;
+//		ev.data.fd = cfd;
+//		ev.events = EPOLLIN;
+//		int ret = epoll_ctl(epfd, EPOLL_CTL_ADD, cfd, &ev);
+//		epoll_ctl(epfd, EPOLL_CTL_ADD, cfd, struct epoll_event* event);
+//? 3. 监听
+//	   epoll_wait(int epfd, struct_event* events, int max_events, int timetout);
+//		timeout: -1永久监听， >=0 限时等待
+//	
+//? EPOLL_CTL_ADD()上树， EPOLL_CTL_DEL()下树， EPOLL_CTL_MOD()修改；
+// 
+//? struct epoll_event{
+//?       uint32_t  events;  // epoll events 监听什么事件， 读： EPOLLIN 写：EPOLLOUT
+//?       event_data_t data; // user data variable  需要监听的文件描述符
+//? } 
+//? typedef struct epoll_data{
+//?       void* ptr;
+//?       int   fd;  // 需要建统的
+//?       uint32_t u32;
+//?       uint645_t u64;
+//?       
+//? } epoll_data_t;
+	//! code
+	int pipefd[2];
+	pipe(pipefd);
+	pid_t pid;
+	pid = fork();
+	if (pid == 0)
+	{
+		char buf[1024];
+		close(pipefd[0]);
+		for (int i = 0; i < 100; i++)
+		{
+			sprintf(buf, "write in %d", i);
+			write(pipefd[1], buf, sizeof(buf));
+			sleep(1);
+		}
+	}
+	else
+	{
+		char buf[1024];
+		close(pipefd[1]);
+		int epfd = epoll_create(1);
+
+		struct epoll_event ev;
+		ev.data.fd = pipefd[0];
+		ev.events = EPOLLIN;
+		epoll_ctl(epfd, EPOLL_CTL_ADD, pipefd[0], &ev);
+		struct epoll_event evw[1];
+		while (1)
+		{
+			int n = epoll_wait(epfd, evw, 1, -1);
+			if (n == 1)
+			{
+				char buf[1024];
+				int ret = read(pipefd[0], buf, sizeof(buf));
+				if (ret <= 0)
+				{
+					close(pipefd[0]);
+					epoll_ctl(epfd, EPOLL_CTL_DEL, pipefd[0], &ev);
+					break;
+				}
+				else
+				{
+					std::cout << buf << std::endl;
+				}
+			}
+		}
+		
+	}
 //--------------------------------------------------------------------------------------------------
 	return 0;
 }
