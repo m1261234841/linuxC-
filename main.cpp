@@ -16,6 +16,7 @@
 #include <fcntl.h>
 #include <sys/types.h>
 #include <sys/stat.h>
+#include <poll.h>
 
 
 typedef struct cli_info {
@@ -1009,13 +1010,109 @@ int main()
 	//? 非阻塞忙轮询： 消耗CPU（轮询所有连接， 有业务就处理）
 	//? IO复用： 内核监听多个文件描述符的读写缓冲区是否有变化， 有变化就把事件告知应用层。
 //? select(); 1. 跨平台  2. windows用的多。 3. 跨平台
+//? select 优点：1. 跨平台 缺点：1.监听最大描述符1024. 2.只是返回变化的文件描述符个数， 具体需要遍历。3. 每次都需要监听的文件描述符由应用层拷贝到内核。
 	//---------------------------------------------------------------------------
 	//? select: 
 	//? 1.文件表： 使用位图实现，共1024位。
 	//? 2.int select(int nfds, fd_set* readfds, fd_set* writefds, fd_set* exceptfds, struct timeval* timeout);
-	//? 3.nfds: 最大文件描述符+1；readfds 需要监听的文件描述符； writefds；
+	//? 3.nfds: 最大文件描述符+1；readfds 需要监听的文件描述符； writefds 需要监听的写描述符集合 nullptr； exceptfds 需要监听的异常描述符。
+	//? 4.timeval{long tv_sec; long tv_usec;} 多长时间监听一次， 固定时间：限时等待； 永久监听： nullptr
+	//? 返回变化的文件描述符个数， 变化的存在于集合中， 未变化的会被删除。
+	//! select 代码
+	struct sockaddr_in addr;
+	const int port = 88881;
+	char ip[16] = "192.168.148.159";
+	addr.sin_family = AF_INET;
+	inet_pton(AF_INET, ip, &addr.sin_addr.s_addr);
+	addr.sin_port = htons(port);
+	int lfd = socket(AF_INET, SOCK_STREAM, 0);
+	
+	int ret = bind(lfd, (struct sockaddr*) & addr, sizeof(addr));
+	assert(ret != -1);
+	struct timeval time_val;
+	time_val.tv_sec = 1;
+	int l_ret = listen(lfd, 128);
+	fd_set old_set, r_set;
+	FD_ZERO(&old_set);
+	FD_ZERO(&r_set);
+
+	FD_SET(lfd, &old_set);
+	int max_fd = lfd + 1;
+	while (1)
+	{
+		r_set = old_set;
+		int n = select(max_fd, &r_set, nullptr, nullptr, &time_val);
+		assert(n != -1);
+		if (n == 0)
+			continue;
+		else
+		{
+			if (FD_ISSET(lfd, &r_set))
+			{
+				struct sockaddr_in cliaddr;
+				socklen_t len = sizeof(cliaddr);
+
+				int afd = accept(lfd, (struct sockaddr*) & cliaddr, &len);
+				char ip[16];
+				int port;
+				std::cout << inet_ntop(AF_INET, &cliaddr.sin_addr.s_addr, ip, 16) << std::endl;
+				std::cout << ntohs(cliaddr.sin_port) << std::endl;
+
+				FD_SET(afd, &old_set);
+				if (afd > lfd)
+					max_fd = afd + 1;
+				if (--n == 0)
+					continue;
+			}
+			else
+			{
+				for (int i = lfd+1; i <= max_fd; i++)
+				{
+					if (FD_ISSET(i, &r_set))
+					{
+						char buf[1500];
+						memset(buf, 0, sizeof(buf));
+						int n = read(i, buf, sizeof(buf));
+
+						if (n < 0) {
+							close(i);
+							FD_CLR(i, &old_set);
+							continue;
+						}
+						else if (n == 0)
+						{
+							// 关闭连接
+							close(i);
+							FD_CLR(i, &old_set);
+						}
+						pthread_mutex_init(&mutex, nullptr);
+						pthread_mutex_lock(&mutex);
+						std::cout << buf << std::endl;
+						pthread_mutex_unlock(&mutex);
+						write(i, buf, n);
+					}
+					else
+					{
+						continue;
+					}
+				}
+			}
+			
+		}
+
+	}
 	//---------------------------------------------------------------------------
-//? epoll(); 1. linux
+//? poll(); 1. 没有最大文件描述符限制。 2. 请求描述符集和返回描述符集分离。
+//? 优点： 1. 没有文件描述符的限制 
+//? 缺点：1. 每次都需要将监听的文件描述符将内核拷贝到应用层。2. 每次都需要遍历数组才知道那个变化了。3.大量并发少量活跃效率低。 
+//? API: int poll(struct pollfd* fds, nfds_t nfds, int timeout)
+	//? fds: 监听数组元素的首地址  nfds：数组有效元素的最大下标 timeout：超时时间-1是永久监听， >=0是限时等待。
+	//? struct pollfd{
+	//?        int fd; 
+	//?        short events;//  POLLIN：读事件， POLLOUT：写事件； 
+	//?        short revents;//  返回监听到的事件}
+	//TODO : POLLCODE
+//? epoll:
 //--------------------------------------------------------------------------------------------------
 	return 0;
 }
