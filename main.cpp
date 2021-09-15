@@ -38,6 +38,14 @@ typedef struct ListNode_t {
 
 ListNode* head = nullptr;
 
+void getIPandPort(struct sockaddr_in* cliaddr) {
+	int port = ntohs(cliaddr->sin_port);
+	char ip[16];
+	inet_ntop(AF_INET, &cliaddr->sin_addr.s_addr, ip, 16);
+	std::cout << "new connect port = " << port << std::endl;
+	std::cout << "new connect ip = " << ip << std::endl;
+}
+
 void* func(void* arg) {
 	char buf[128];
 	memset(buf, 0, sizeof(buf));
@@ -1138,54 +1146,140 @@ int main()
 //?       uint645_t u64;
 //?       
 //? } epoll_data_t;
-	//! code
-	int pipefd[2];
-	pipe(pipefd);
-	pid_t pid;
-	pid = fork();
-	if (pid == 0)
-	{
-		char buf[1024];
-		close(pipefd[0]);
-		for (int i = 0; i < 100; i++)
-		{
-			sprintf(buf, "write in %d", i);
-			write(pipefd[1], buf, sizeof(buf));
-			sleep(1);
-		}
-	}
-	else
-	{
-		char buf[1024];
-		close(pipefd[1]);
-		int epfd = epoll_create(1);
+	//! code epoll监听写操作
+	//int pipefd[2];
+	//pipe(pipefd);
+	//pid_t pid;
+	//pid = fork();
+	//if (pid == 0)
+	//{
+	//	char buf[1024];
+	//	close(pipefd[0]);
+	//	for (int i = 0; i < 100; i++)
+	//	{
+	//		sprintf(buf, "write in %d", i);
+	//		write(pipefd[1], buf, sizeof(buf));
+	//		sleep(1);
+	//	}
+	//}
+	//else
+	//{
+	//	char buf[1024];
+	//	close(pipefd[1]);
+	//	int epfd = epoll_create(1);
 
-		struct epoll_event ev;
-		ev.data.fd = pipefd[0];
-		ev.events = EPOLLIN;
-		epoll_ctl(epfd, EPOLL_CTL_ADD, pipefd[0], &ev);
-		struct epoll_event evw[1];
-		while (1)
+	//	struct epoll_event ev;
+	//	ev.data.fd = pipefd[0];
+	//	ev.events = EPOLLIN;
+	//	epoll_ctl(epfd, EPOLL_CTL_ADD, pipefd[0], &ev);
+	//	struct epoll_event evw[1];
+	//	while (1)
+	//	{
+	//		int n = epoll_wait(epfd, evw, 1, -1);
+	//		if (n == 1)
+	//		{
+	//			char buf[1024];
+	//			int ret = read(pipefd[0], buf, sizeof(buf));
+	//			if (ret <= 0)
+	//			{
+	//				close(pipefd[0]);
+	//				epoll_ctl(epfd, EPOLL_CTL_DEL, pipefd[0], &ev);
+	//				break;
+	//			}
+	//			else
+	//			{
+	//				std::cout << buf << std::endl;
+	//			}
+	//		}
+	//	}
+	//	
+	//}
+	//! code epoll监听lfd
+	struct sockaddr_in addr;
+	char ip[16] = "192.168.148.159";
+	const int port = 8888;
+	addr.sin_port = htons(port);
+	int ret = inet_pton(AF_INET, ip, &addr.sin_addr.s_addr);
+	int lfd = socket(AF_INET, SOCK_STREAM, 0);
+	int bind_ret = bind(lfd, (struct sockaddr*) & addr, sizeof(addr));
+	int lis_ret = listen(lfd, 1024);
+	int epfd = epoll_create(1);
+
+	struct epoll_event ev;
+	ev.data.fd = lfd;
+	ev.events = EPOLLIN | EPOLLET;
+	int max_events = 2;
+
+	epoll_ctl(epfd, EPOLL_CTL_ADD, lfd, &ev);
+	struct epoll_event rev[1024];
+	while (1)
+	{
+		int n = epoll_wait(epfd, rev, 1024, -1);
+		std::cout << "epoll_wait ..........\n" << "n == " << n << std::endl;
+		if (n == 0)
+			continue;
+		for (int i = 0; i < n; i++)
 		{
-			int n = epoll_wait(epfd, evw, 1, -1);
-			if (n == 1)
+			if (rev[i].data.fd == lfd && rev[i].events & EPOLLIN) // 判断lfd 并且是EPOLLIN变化2
+
 			{
-				char buf[1024];
-				int ret = read(pipefd[0], buf, sizeof(buf));
-				if (ret <= 0)
-				{
-					close(pipefd[0]);
-					epoll_ctl(epfd, EPOLL_CTL_DEL, pipefd[0], &ev);
-					break;
+				struct sockaddr_in cliaddr;
+				socklen_t len = sizeof(cliaddr);
+				int afd = accept(lfd, (struct sockaddr*) & cliaddr, &len);
+
+				// 设置afd为非阻塞
+				int flags = fcntl(afd, F_GETFL);
+				flags |= O_NONBLOCK;
+				fcntl(afd, F_SETFL, flags);
+
+				getIPandPort(&cliaddr);
+				struct epoll_event ev;
+				ev.data.fd = afd;
+				ev.events = EPOLLIN | EPOLLET;
+				epoll_ctl(epfd, EPOLL_CTL_ADD, afd, &ev);
+				max_events += 1;
+			}
+			else
+			{
+				char buf[4];
+				while (1) {
+					// 如果读一个阻塞缓冲区， read阻塞； 如果读非阻塞缓冲区， 返回-1，并设置errno值为EAGAIN；
+					int m = read(rev[i].data.fd, buf, 4);
+					if (m < 0)
+					{
+						if (errno == EAGAIN)
+						{
+							break;
+						}
+						if (m = -1) {
+							// 客户端关闭
+							
+							break;
+						}
+					}
+					else if (m == 0)
+					{
+						//客户端关闭
+						close(rev[i].data.fd);
+						epoll_ctl(epfd, EPOLL_CTL_DEL, rev[i].data.fd, &rev[i]);
+						max_events -= 1;
+						std::cout << rev[i].data.fd << " closed" << std::endl;
+					}
+					else {
+						write(STDOUT_FILENO, buf, 4);
+						write(rev[i].data.fd, buf, sizeof(buf));
+					}
+
 				}
-				else
-				{
-					std::cout << buf << std::endl;
-				}
+				
 			}
 		}
-		
+
 	}
+//? epoll 水平触发（LT）： 只要缓冲区里有数据， 就触发epoll
+//? epoll 边缘触发（ET）： （点评有高低变化）就触发。
+//? 监听读缓冲区： 1. 水平触发：只要读缓冲区有数据， 就触发epoll 2.边沿触发： 数据来一次（从无到有）， epoll触发一次
+//? 监听写缓冲区： 1. 水平触发： 只要可写就会触发。 2. 边沿触发： 数据有到无（数据发出去了）；
 //--------------------------------------------------------------------------------------------------
 	return 0;
 }
